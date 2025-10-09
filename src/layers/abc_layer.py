@@ -45,32 +45,13 @@ class Layer(ABC):
     def partial_derivative_wrt_a(self):
         raise NotImplementedError()
     
-    # TODO
-    # def partial_derivative_loss_wrt_a(self, i_neuron: int, input: float, loss: Loss, prev_layer: "Layer" | None) -> float:
-    #     dL_da = 0.
-    #     # Проверяем есть ли предыдущий слой, если нет, то считаем dL_da для выходного слоя
-    #     if prev_layer is None:
-    #         # Для каждого веса выходного нейрона частная производная Loss и активации равна одному и тому же числу
-    #         dL_da = loss.partial_derivative_wrt_a(i_neuron, input)
-    #     else:
-    #         # Приращение каждого веса нейрона влияет на приращение Loss по каждому выходу
-    #         # поэтому dL_da^(n-1) = dL_da^(n) * da_dz^(n) * dz^(n)_da^(n-1)
-    #         for i_output_neuron in range(prev_layer.out_features):
-    #             dL_da_p = loss.dL_dA[i_output_neuron]
-    #             da_dz_p = prev_layer.activation_function.dA_dZ[i_output_neuron]
-    #             dzp_da = prev_layer.partial_derivative_wrt_a(i_output_neuron, i_neuron)
-
-    #             dL_da += dL_da_p*da_dz_p*dzp_da
-
-    #     return dL_da
     def partial_derivative_loss_wrt_a(self, i_neuron: int, inputs: np.ndarray, loss: Loss, prev_layer: "Layer" | None) -> float:
-        dL_da = 0.
+        dL_da = np.zeros(len(inputs))
         # Проверяем есть ли предыдущий слой, если нет, то считаем dL_da для выходного слоя
         if prev_layer is None:
             # Для каждого веса выходного нейрона частная производная Loss и активации равна одному и тому же числу
             dL_da = loss.partial_derivative_wrt_a(i_neuron, inputs)
         else:
-            # TODO
             # Приращение каждого веса нейрона влияет на приращение Loss по каждому выходу
             # поэтому dL_da^(n-1) = dL_da^(n) * da_dz^(n) * dz^(n)_da^(n-1)
             for i_output_neuron in range(prev_layer.out_features):

@@ -53,7 +53,6 @@ class MLP:
                 loss_batch = self.loss(y_train_batch, y_pred_batch)
 
                 self.optimizer.step()
-                self.optimizer.zero_grad()
 
                 if verbose_n_batch_multiple and n_batch%verbose_n_batch_multiple == 0:
                     losses.append(loss_batch)

@@ -28,41 +28,38 @@ class LinearLayer(Layer):
             neuron.update_weights(weights_neuron)
 
     def __call__(self, inputs: np.ndarray) -> np.ndarray:
-        activations = np.array([neuron(inputs) for neuron in self.neurons])
         # Транспонируем, чтобы строки были объектами, а столбцы выходными значениями нейронов
-        return self.activation_function(activations.T)
+        activations = np.array([neuron(inputs) for neuron in self.neurons]).T
+        # Прогоняем выходны нейронов через ф-ю активации
+        return self.activation_function(activations)
     
     def gradient(self, loss: Loss, prev_layer: Layer | None = None) -> np.ndarray:
         # Получаем размеры слоя (кол-во нейронов, кол-во весов на каждом нейроне)
-        layer_size = self.get_size()
+        n_neurons, n_weights = self.get_size()
         # Формируем хранение частных производных
-        dL_dW = np.zeros(layer_size)
-        dL_dA = np.zeros(layer_size[0])
-        dA_dZ = np.zeros(layer_size[0])
+        grad_W = np.zeros([n_neurons, n_weights])
+        dL_dA = np.empty((0, len(self.activation_function.A)))
         # Считаем частные производные Loss функции по весам каждого нейрона
-        for i_neuron in range(layer_size[0]):
+        for i_neuron in range(n_neurons):
             # Приращение Loss по каждому выходу
             dL_da = self.partial_derivative_loss_wrt_a(i_neuron, self.activation_function.A, loss, prev_layer)
             # Частная производная функции активации по выходу ф-и линейной трансформации
             da_dz = self.activation_function.partial_derivative_wrt_z(i_neuron)
-            # TODO
             # Записываем частную производную Loss по активации и активации по весу
-            dL_dA[i_neuron] = dL_da
-            dA_dZ[i_neuron] = da_dz
+            dL_dA = np.vstack((dL_dA, dL_da))
             # Считаем частные производные ф-и линейной трансформации по каждому весу нейрона
-            for i_weight in range(layer_size[1]):
+            for i_weight in range(n_weights):
                 # Если считаем по bias, то dz_dw будет равна 1
                 dz_dw = self.partial_derivative_wrt_w(i_neuron, i_weight)
                 # Частная производная Loss по весу нейрона: dL_dw = dL_da*da_dz*dz_dw
-                dL_dW[i_neuron, i_weight] = dL_da*da_dz*dz_dw
+                grad_W[i_neuron, i_weight] = np.mean(dL_da*da_dz*dz_dw)
 
         # Сохраняем частные производные
         loss.dL_dA = dL_dA
-        self.activation_function.dA_dZ = dA_dZ
         
-        return dL_dW
+        return grad_W
     
-    def partial_derivative_wrt_w(self, i_neuron: int, i_weight: int) -> float:
+    def partial_derivative_wrt_w(self, i_neuron: int, i_weight: int) -> np.ndarray:
         return self.neurons[i_neuron].partial_derivative_wrt_w(i_weight)
     
     def partial_derivative_wrt_a(self, i_neuron: int, i_feature: int) -> float:

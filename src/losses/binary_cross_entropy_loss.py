@@ -7,8 +7,10 @@ class BinaryCrossEntropy(Loss):
     def __init__(self, labels: dict[int, str], eps: float = 1e-7):
         super().__init__()
 
-        self.labels = labels
+        self.n_labels = len(labels)
         self.eps = eps
+
+        self.n_output_neurons = None
 
     def __call__(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
         """
@@ -22,51 +24,68 @@ class BinaryCrossEntropy(Loss):
         :return: Cross-entropy ошибка.
         :rtype: float
         """
+        # 1. Предобработка данных
         # Трансформируем y_true с помощью one-hot кодирования
-        n_labels = len(self.labels)
-        ty_true = self._to_one_hot(y_true, n_labels)
-        self.y = ty_true
+        ty_true = self._to_one_hot(y_true)
         # Если бинарная классификация, то подгоняем y_pred под формулу кросс-энтропии в общем виде
+        self.n_output_neurons = 1 if self.n_labels == 2 and (y_pred.ndim == 1 or y_pred.shape[1] == 1) else self.n_labels
         ty_pred = y_pred.copy()
-        if len(self.labels) == 2:
-            ty_pred = self._expand_binary_probs(ty_pred)
+        if self.n_output_neurons == 1:
+            ty_pred = self._expand_binary_probs(ty_pred)        
         
-        # Добавляем маленькое число, чтобы исключить взятие log от 0
-        ty_pred = np.clip(ty_pred, self.eps, None)
-        # Считаем ошибку для каждого класса
-        losses = -ty_true*np.log(ty_pred)
+        # 2. Расчитываем потерю для классов
+        # Считаем ошибку для каждого класса (добавляем eps, чтобы исключить log от 0)
+        losses = -ty_true*np.log(ty_pred + self.eps)
         # Усредняем ошибки по классам
-        self.losses = np.mean(losses, axis=0)
+        losses = np.mean(losses, axis=0)
         # Если бинарная классификация и выходной слой отдаёт 1 значение, то подгоняем формат
-        if len(self.labels) == 2 and (y_pred.ndim == 1 or y_pred.shape[1] == 1):
-            self.losses = np.array([np.mean(self.losses)])
+        if self.n_output_neurons == 1:
+            losses = np.array([np.mean(losses)])
+
+        # 3. Сохранение данных
+        # Сохраняем необходимые данные и инициализируем хранение производной
+        self.ty_true = ty_true
+        self.losses = losses
+        self.dL_dA = np.empty((0, len(y_true)))
 
         return np.mean(self.losses)
     
-    # TODO
-    # def partial_derivative_wrt_a(self, i_neuron: int, inputs: np.ndarray) -> float:
-    #     t_inputs = self._expand_binary_probs(inputs)
-    #     return -np.mean(self.y[:, i_neuron]/t_inputs[:, i_neuron])
-    def partial_derivative_wrt_a(self, i_neuron: int, inputs: np.ndarray) -> np.ndarray:
-        t_inputs = self._expand_binary_probs(inputs)
-        return -self.y[:, i_neuron]/t_inputs[:, i_neuron]
+    # TODO: неверный расчет производной
+    # def partial_derivative_wrt_a(self, i_neuron: int, inputs: np.ndarray) -> np.ndarray:
+    #     # Если бинарная классификация и выходной слой отдаёт 1 значение, то подгоняем формат
+    #     if self.n_output_neurons == 1:
+    #         t_inputs = self._expand_binary_probs(inputs)
 
-    def _to_one_hot(self, y_true: np.ndarray, n_labels: int | None = None) -> np.ndarray:
+    #         dL_dA = -np.sum(self.y_true/(t_inputs + self.eps), axis=1)
+    #     else:
+    #         dL_dA = -self.y_true[:, i_neuron]/(inputs[:, i_neuron] + self.eps)
+        
+    #     self.dL_dA = np.vstack((self.dL_dA, dL_dA))
+    #     return dL_dA
+    def partial_derivative_wrt_a(self, i_neuron: int, A: np.ndarray) -> np.ndarray:
+        # Если бинарная классификация и выходной слой отдаёт 1 значение, то подгоняем формат
+        if self.n_output_neurons == 1:
+            y = self.ty_true[:, 1]
+            a = np.clip(A.squeeze(), self.eps, 1 - self.eps)
+        else:
+            y = self.ty_true[:, i_neuron]
+            a = np.clip(A[:, i_neuron], self.eps, 1 - self.eps)
+        
+        dL_da = -(y / a) + ((1 - y) / (1 - a))
+        self.dL_dA = np.vstack((self.dL_dA, dL_da))
+        return dL_da
+
+    def _to_one_hot(self, y_true: np.ndarray) -> np.ndarray:
         """
         Преобразует список с метками в one-hot encoding список.
 
         :param y_true: Массив меток классов shape = [n_samples,].
         :type y_true: np.ndarray
-        :param n_labels: Количество классов (если None, берётся max + 1).
-        :type n_labels: int | None
 
         :return: Список закодированными метками класса размера [n_samples, n_labels]
         :rtype: np.ndarray
         """
-        if n_labels is None:
-            n_labels = np.max(y_true) + 1
-        
-        return np.eye(n_labels)[y_true].squeeze()
+        return np.eye(self.n_labels)[y_true].squeeze()
     
     def _expand_binary_probs(self, y_pred: np.ndarray) -> np.ndarray:
         """

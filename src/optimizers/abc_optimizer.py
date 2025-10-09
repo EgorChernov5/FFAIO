@@ -16,9 +16,3 @@ class Optimizer(ABC):
     @abstractmethod
     def step(self) -> None:
         raise NotImplementedError()
-    
-    def zero_grad(self) -> None:
-        for layer in self.arch_model:
-            layer.activation_function.dA_dZ = None
-        
-        self.loss.dL_dA = None

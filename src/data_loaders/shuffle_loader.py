@@ -5,12 +5,10 @@ from .abc_loader import ABCLoader
 
 
 class ShuffleLoader(ABCLoader):
-    def __init__(self, batch_size: int = 32, random_state: int | None = None):
+    def __init__(self, batch_size: int = 32):
         super().__init__()
 
         self.batch_size = batch_size
-        self.random_state = random_state
-        if self.random_state: np.random.seed(self.random_state)
 
     def get_data(self, X: np.ndarray, y: np.ndarray) -> Iterator[tuple[int, np.ndarray, np.ndarray]]:
         n_samples = len(y)
