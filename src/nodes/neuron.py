@@ -1,16 +1,17 @@
 import numpy as np
 
+from src.weights_initializers import random_numbers_init
+
 
 class Neuron:
     def __init__(self, in_features: int, bias: bool):
         self.in_features = in_features
 
-        self.weights = np.random.rand(self.in_features)
-        self.bias = np.random.rand(1)[0] if bias else np.zeros(1)[0]
+        weights = random_numbers_init(self.in_features + 1 if bias else self.in_features)
+        self.bias = weights[-1] if bias else np.zeros(1)[0]
+        self.weights = weights[:-1] if bias else weights
 
         self.X: np.ndarray | None = None
-        # self.Z = 0.
-        self.Z: np.ndarray | None = None
 
     def len_weights(self):
         return len(self.weights) + 1 if self.bias else len(self.weights)
@@ -40,12 +41,9 @@ class Neuron:
         :rtype: float
         """
         self.X = inputs.copy()
-        self.Z = self.X@self.weights + self.bias if self.bias else self.X@self.weights
-        return self.Z
+        Z = self.X@self.weights + self.bias if self.bias else self.X@self.weights
+        return Z
 
-    # TODO
-    # def partial_derivative_wrt_w(self, i_weight: int) -> float:
-    #     return 1. if self.bias and i_weight == len(self.weights) else np.mean(self.X[:, i_weight])
     def partial_derivative_wrt_w(self, i_weight: int) -> np.ndarray:
         return np.ones(len(self.X)) if self.bias and i_weight == len(self.weights) else self.X[:, i_weight]
     
