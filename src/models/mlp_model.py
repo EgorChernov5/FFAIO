@@ -42,7 +42,9 @@ class MLP:
             postprocess: Callable[[np.ndarray], np.ndarray] | None = None,
             count_metric: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None,
             verbose_n_batch_multiple: int = 1
-        ):
+        ) -> tuple[np.ndarray, np.ndarray]:
+        losses_epochs = []
+        metrics_epochs = []
         for n_epoch in range(n_epochs):
             losses = []
             metrics = []
@@ -61,3 +63,8 @@ class MLP:
                     print(f"Epoch {n_epoch + 1} ({n_batch*self.optimizer.data_loader.batch_size}/{len(y_train)}): \
                           {self.loss.to_str()} = {round(np.mean(losses), 3)} \
                           {count_metric.__name__} = {round(np.mean(metrics), 3)}")
+                    
+            losses_epochs.append(np.mean(losses))
+            metrics_epochs.append(np.mean(metrics))
+
+        return np.array(losses_epochs), np.array(metrics_epochs)
