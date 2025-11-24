@@ -45,7 +45,13 @@ class Layer(ABC):
     def partial_derivative_wrt_a(self):
         raise NotImplementedError()
     
-    def partial_derivative_loss_wrt_a(self, i_neuron: int, inputs: np.ndarray, loss: Loss, prev_layer: "Layer" | None) -> float:
+    def partial_derivative_loss_wrt_a(
+            self,
+            i_neuron: int,
+            inputs: np.ndarray,
+            loss: Loss,
+            prev_layer: "Layer" | None
+        ) -> np.ndarray:
         dL_da = np.zeros(len(inputs))
         # Проверяем есть ли предыдущий слой, если нет, то считаем dL_da для выходного слоя
         if prev_layer is None:

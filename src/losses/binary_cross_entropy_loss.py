@@ -50,18 +50,6 @@ class BinaryCrossEntropy(Loss):
 
         return np.mean(self.losses)
     
-    # TODO: неверный расчет производной
-    # def partial_derivative_wrt_a(self, i_neuron: int, inputs: np.ndarray) -> np.ndarray:
-    #     # Если бинарная классификация и выходной слой отдаёт 1 значение, то подгоняем формат
-    #     if self.n_output_neurons == 1:
-    #         t_inputs = self._expand_binary_probs(inputs)
-
-    #         dL_dA = -np.sum(self.y_true/(t_inputs + self.eps), axis=1)
-    #     else:
-    #         dL_dA = -self.y_true[:, i_neuron]/(inputs[:, i_neuron] + self.eps)
-        
-    #     self.dL_dA = np.vstack((self.dL_dA, dL_dA))
-    #     return dL_dA
     def partial_derivative_wrt_a(self, i_neuron: int, A: np.ndarray) -> np.ndarray:
         # Если бинарная классификация и выходной слой отдаёт 1 значение, то подгоняем формат
         if self.n_output_neurons == 1:
@@ -98,13 +86,13 @@ class BinaryCrossEntropy(Loss):
         :return: Массив вероятностей [p, 1 - p] (размер: [n_samples, 2]).
         :rtype: np.ndarray
         """
-        # Если размер [n_samples,], то переводим в [n_samples, 1]
-        if y_pred.ndim == 1:
-            y_pred = y_pred.reshape(-1, 1)
-
         # Если и так уже две вероятности, то менять ничего не надо
         if y_pred.shape[1] == 2:
             return y_pred
+        
+        # Если размер [n_samples,], то переводим в [n_samples, 1]
+        if y_pred.ndim == 1:
+            y_pred = y_pred.reshape(-1, 1)
 
         p = y_pred[:, 0]
         return np.column_stack([1 - p, p])

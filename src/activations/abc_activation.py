@@ -12,10 +12,6 @@ class ActivationFunction(ABC):
     def __call__(self, inputs: np.ndarray) -> np.ndarray:
         raise NotImplementedError()
 
-    # TODO: должен возвращать np.ndarray
-    # @abstractmethod
-    # def partial_derivative_wrt_z(self, i_neuron: int) -> float:
-    #     raise NotImplementedError()
     @abstractmethod
     def partial_derivative_wrt_z(self, i_neuron: int) -> np.ndarray:
         raise NotImplementedError()
