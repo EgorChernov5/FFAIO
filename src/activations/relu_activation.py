@@ -1,17 +1,13 @@
 import numpy as np
 
-from src.activations import ActivationFunction
+from src.activations import ABCActivation
 
 
-class ReLU(ActivationFunction):
+class ReLUActivation(ABCActivation):
     def __call__(self, inputs: np.ndarray) -> np.ndarray:
-        features = np.maximum(0, inputs)
-        # Усреднение по выходам в батче
-        self.A = np.mean(features, axis=1)
-        return features
+        if self.learning: self.inputs = inputs.copy()
+        self.outputs = np.maximum(0, inputs)
+        return self.outputs
     
-    # def partial_derivative_wrt_z(self, input: float) -> float:
-    #     return 1. if np.maximum(0, input) else 0.
-    
-    def partial_derivative_wrt_z(self, i_neuron: int) -> float:
-        return 1. if self.A[i_neuron] > 0. else 0.
+    def pd_wrt_inputs(self) -> float:
+        return np.where(self.outputs > 0., 1., 0.)

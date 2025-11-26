@@ -1,2 +1,2 @@
-from .abc_optimizer import Optimizer
-from .sgd_optimizer import SGD
+from .abc_optimizer import ABCOptimizer
+from .gd_optimizer import GDOptimizer

@@ -1,10 +1,9 @@
 import numpy as np
 
-from src.activations import ActivationFunction
+from src.activations import ABCActivation
 
 
-
-class Softmax(ActivationFunction):
+class SoftmaxActivation(ABCActivation):
     def __call__(self, inputs: np.ndarray) -> np.ndarray:
         exp = np.exp(inputs - np.max(inputs))
         self.A = exp/np.sum(exp)

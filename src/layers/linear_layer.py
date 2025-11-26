@@ -1,66 +1,50 @@
 import numpy as np
 
-from src.layers import Layer
-from src.activations import ActivationFunction
-from src.nodes import Neuron
-from src.losses import Loss
+from src.layers import ABCLayer
+from src.weights_initializers import random_numbers_init
 
 
-class LinearLayer(Layer):
-    def __init__(self, in_features: int, out_features: int, activation_function: ActivationFunction, bias: bool):
-        super().__init__(in_features, out_features, activation_function)
+class LinearLayer(ABCLayer):
+    def __init__(self, in_features: int, out_features: int, bias: bool = True):
+        super().__init__()
 
-        self.bias = bias
-        self.neurons = [Neuron(self.in_features, self.bias) for _ in range(self.out_features)]
-
-    def get_size(self) -> list[int]:
-        return [self.out_features, self.in_features + 1 if self.bias else self.in_features]
-
-    def len_weights(self) -> int:
-        size = self.get_size()
-        return size[0]*size[1]
-    
-    def get_weights(self) -> np.ndarray:
-        return np.array([neuron.get_weights() for neuron in self.neurons])
-
-    def update_weights(self, weights: np.ndarray):
-        for neuron, weights_neuron in zip(self.neurons, weights):
-            neuron.update_weights(weights_neuron)
+        weights = np.array([random_numbers_init(in_features + 1 if bias else in_features) for _ in range(out_features)])
+        self.W = weights[:, :-1] if bias else weights
+        self.b = weights[:, -1] if bias else np.zeros(out_features)
 
     def __call__(self, inputs: np.ndarray) -> np.ndarray:
-        # Транспонируем, чтобы строки были объектами, а столбцы выходными значениями нейронов
-        activations = np.array([neuron(inputs) for neuron in self.neurons]).T
-        # Прогоняем выходны нейронов через ф-ю активации
-        return self.activation_function(activations)
+        if self.learning: self.inputs = inputs.copy()
+        self.outputs = inputs@self.W.T + self.b
+        return self.outputs
     
-    def gradient(self, loss: Loss, prev_layer: Layer | None = None) -> np.ndarray:
-        # Получаем размеры слоя (кол-во нейронов, кол-во весов на каждом нейроне)
-        n_neurons, n_weights = self.get_size()
-        # Формируем хранение частных производных
-        grad_W = np.zeros([n_neurons, n_weights])
-        dL_dA = np.empty((0, len(self.activation_function.A)))
-        # Считаем частные производные Loss функции по весам каждого нейрона
-        for i_neuron in range(n_neurons):
-            # Приращение Loss по каждому выходу
-            dL_da = self.partial_derivative_loss_wrt_a(i_neuron, self.activation_function.A, loss, prev_layer)
-            # Частная производная функции активации по выходу ф-и линейной трансформации
-            da_dz = self.activation_function.partial_derivative_wrt_z(i_neuron)
-            # Записываем частную производную Loss по активации и активации по весу
-            dL_dA = np.vstack((dL_dA, dL_da))
-            # Считаем частные производные ф-и линейной трансформации по каждому весу нейрона
-            for i_weight in range(n_weights):
-                # Если считаем по bias, то dz_dw будет равна 1
-                dz_dw = self.partial_derivative_wrt_w(i_neuron, i_weight)
-                # Частная производная Loss по весу нейрона: dL_dw = dL_da*da_dz*dz_dw
-                grad_W[i_neuron, i_weight] = np.mean(dL_da*da_dz*dz_dw)
+    def _validate_weights_size(self, weights: np.ndarray):
+        error = ''
+        if any(self.b):
+            if (len(weights[0]) - 1) != len(self.W[0]):
+                error = 'Используется смещение, но значение отстуствует.'
+        else:
+            if len(weights[0]) != len(self.W[0]):
+                error = f'Не совпадают размеры весов {len(weights)}x{len(weights[0])} и {len(self.W)}x{len(self.W[0])}.'
 
-        # Сохраняем частные производные
-        loss.dL_dA = dL_dA
-        
-        return grad_W
+        assert len(error) == 0, error
+
+    def get_weights(self) -> np.ndarray:
+         return np.column_stack((self.W, self.b)) if any(self.b) else self.W
     
-    def partial_derivative_wrt_w(self, i_neuron: int, i_weight: int) -> np.ndarray:
-        return self.neurons[i_neuron].partial_derivative_wrt_w(i_weight)
+    def update_weights(self, weights: np.ndarray):
+        # Валидируем веса
+        self._validate_weights_size(weights)
+
+        # Обновляем веса
+        if any(self.b):
+            self.W, self.b = weights[:, :-1], weights[:, -1]
+        else:
+            self.W = weights
     
-    def partial_derivative_wrt_a(self, i_neuron: int, i_feature: int) -> float:
-        return self.neurons[i_neuron].partial_derivative_wrt_a(i_feature)
+    def pd_wrt_inputs(self) -> np.ndarray | None:
+        # Частная производная по входам
+        return self.W
+    
+    def pd_wrt_w(self) -> np.ndarray | None:
+        # Если считаем по bias, то dZ_dW будет равна 1
+        return np.column_stack((self.inputs, np.ones(len(self.inputs)))) if any(self.b) else self.inputs

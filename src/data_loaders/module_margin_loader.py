@@ -1,9 +1,9 @@
 from typing import Iterator
-from abc import ABC, abstractmethod
 import numpy as np
 
+from src.data_loaders import ABCLoader
 
-class ABCLoader(ABC):
-    @abstractmethod
+
+class ModuleMarginLoader(ABCLoader):
     def get_data(self, X: np.ndarray, y: np.ndarray) -> Iterator[tuple[int, np.ndarray, np.ndarray]]:
-        raise NotImplementedError()
+        pass
