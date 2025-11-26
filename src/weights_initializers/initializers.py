@@ -1,6 +1,10 @@
 import numpy as np
 
 
+def correlated_init():
+    pass
+
+
 def random_numbers_init(n_in, sigma=None):
     """
     Эвристическая инициализация весов случайными числами из Var(w).

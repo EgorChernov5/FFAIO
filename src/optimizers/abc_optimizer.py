@@ -1,18 +1,21 @@
 from abc import ABC, abstractmethod
 
-from src.layers import Layer
-from src.losses import Loss
+from src.data_loaders import ABCLoader, BaseLoader
+from src.layers import ABCLayer
+from src.regularizers import ABCRegularizer
 
 
-class Optimizer(ABC):
-    def __init__(self):
-        self.arch_model: list[Layer] | None = None
-        self.loss: Loss | None = None
-
-    def add_params(self, arch_model: list[Layer], loss: Loss) -> None:
-        self.arch_model = arch_model
-        self.loss = loss
+class ABCOptimizer(ABC):
+    def __init__(
+            self,
+            model_weights_layers: list[ABCLayer],
+            data_loader: ABCLoader | None = None,
+            lr: float = 0.001
+        ):
+        self.model_weights_layers = model_weights_layers
+        self.data_loader = BaseLoader() if data_loader is None else data_loader
+        self.lr = lr
 
     @abstractmethod
-    def step(self) -> None:
+    def step(self, regularizer: ABCRegularizer | None = None):
         raise NotImplementedError()
