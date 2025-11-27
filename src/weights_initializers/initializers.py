@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+from torch.nn import init
 
 
 def correlated_init():
@@ -52,3 +54,23 @@ def he_init(n_in):
     stddev = np.sqrt(2.0 / n_in)
     W = np.random.normal(0.0, stddev, n_in)
     return W
+
+
+def conv_uniform_init(shape: list[int], bias: bool = True) -> tuple[np.ndarray, np.ndarray | None]:
+    """
+    Docstring for conv_uniform_init
+    
+    :param shape: Description (shape: [out_channels, in_channels, kernel_size[0], kernel_size[1]])
+    :type shape: list[int]
+    :param bias: Description
+    :type bias: bool
+
+    :return: Description
+    :rtype: tuple[ndarray[_AnyShape, dtype[Any]], ndarray[_AnyShape, dtype[Any]] | None]
+    """
+    assert len(shape) == 4, f'Dimention of inputs should be 4, but got {len(shape)}'
+    
+    k = 1/(shape[1]*shape[2]*shape[3])
+    W = init.uniform_(torch.zeros(shape), a=-np.sqrt(k), b=np.sqrt(k)).cpu().numpy()
+    b = init.uniform_(torch.zeros([shape[0]]), a=-np.sqrt(k), b=np.sqrt(k)).cpu().numpy() if bias else None
+    return W, b
