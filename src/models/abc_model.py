@@ -4,13 +4,14 @@ from typing import Callable
 
 from src.layers import ABCLayer
 from src.activations import ABCActivation
+from src.structure_layers import ABCStructureLayer
 from src.losses import ABCLoss
 from src.optimizers import ABCOptimizer
 from src.regularizers import ABCRegularizer
 
 
 class ABCModel(ABC):
-    def __init__(self, arch_model: list[ABCLayer| ABCActivation]):
+    def __init__(self, arch_model: list[ABCLayer| ABCActivation | ABCStructureLayer]):
         self.arch_model = arch_model
 
         self.learning = True
@@ -36,18 +37,19 @@ class ABCModel(ABC):
         # Отключаем сохранение параметров
         self.eval()
         loss.eval()
-        if X_val is not None and verbose_n_batch_multiple and n_batch%verbose_n_batch_multiple == 0:
-            # Val loss
-            y_val_probs = self.__call__(X_val)
-            loss_val = loss(y_val, y_val_probs)
-            loss_val = regularizer(self.get_weights(), loss_val) if regularizer else loss_val
-            # Metric
-            y_val_preds = y_val_probs if postprocess is None else postprocess(y_val_probs)
-            metrics_val_batch.append(count_metric(y_val, y_val_preds))
+        if verbose_n_batch_multiple and n_batch%verbose_n_batch_multiple == 0:
+            if X_val is not None:
+                # Val loss
+                y_val_probs = self.__call__(X_val)
+                loss_val = loss(y_val, y_val_probs)
+                if regularizer: loss_val += regularizer(self.get_weights())
+                # Metric
+                y_val_preds = y_val_probs if postprocess is None else postprocess(y_val_probs)
+                metrics_val_batch.append(count_metric(y_val, y_val_preds))
 
             if verbose_statistic == 'all':  # Полное сохранение
                 losses_train_batch.append(loss_batch)
-                losses_val_batch.append(loss_val)
+                if X_val is not None: losses_val_batch.append(loss_val)
             else:
                 if len(losses_train_batch) == 0:
                     _, X_rand, y_rand = next(optimizer.data_loader.get_data(X_train, y_train))
@@ -55,7 +57,7 @@ class ABCModel(ABC):
                     loss_rand = loss(y_rand, y_rand_pred)
                     loss_rand = regularizer(self.get_weights(), loss_rand) if regularizer else loss_rand
                     losses_train_batch = [loss_rand]
-                    losses_val_batch = [loss_rand]
+                    if X_val is not None: losses_val_batch = [loss_rand]
                 
                 lambda_q = 0.1
                 if verbose_statistic == 'SMA':
@@ -68,13 +70,17 @@ class ABCModel(ABC):
                 # Train loss
                 losses_train_batch = [lambda_q*loss_batch + (1 - lambda_q)*losses_train_batch[0]]
                 # Val loss
-                losses_val_batch = [lambda_q*loss_val + (1 - lambda_q)*losses_val_batch[0]]
+                if X_val is not None: losses_val_batch = [lambda_q*loss_val + (1 - lambda_q)*losses_val_batch[0]]
 
             # Visualize
-            print(f"Epoch {n_epoch + 1} ({n_batch*optimizer.data_loader.batch_size}/{len(y_train)}):\t"
-                    f"Train {loss.to_str()} = {round(np.mean(losses_train_batch), 3)}\t"
-                    f"Val {loss.to_str()} = {round(np.mean(losses_train_batch), 3)}\t"
-                    f"{count_metric.__name__} = {round(np.mean(metrics_val_batch), 3)}")
+            if X_val is not None:
+                print(f"Epoch {n_epoch + 1} ({n_batch*optimizer.data_loader.batch_size}/{len(y_train)}):\t"
+                        f"Train {loss.to_str()} = {round(np.mean(losses_train_batch), 3)}\t"
+                        f"Val {loss.to_str()} = {round(np.mean(losses_train_batch), 3)}\t"
+                        f"{count_metric.__name__} = {round(np.mean(metrics_val_batch), 3)}")
+            else:
+                print(f"Epoch {n_epoch + 1} ({n_batch*optimizer.data_loader.batch_size}/{len(y_train)}):\t"
+                        f"Train {loss.to_str()} = {round(np.mean(losses_train_batch), 3)}")
         
         # Включаем сохранение параметров
         self.train()
@@ -89,9 +95,13 @@ class ABCModel(ABC):
         for layer in self.get_weights_layers():
             weights, bias = layer.get_weights()
             W.append(weights)
-            if bias is not None: b.append(bias)
+            if bias is not None:
+                b.append(bias)
         
-        return np.array(W), np.array(b) if len(b) else None
+        if len(b):
+            return np.array(W), np.array(b)
+        else:
+            return np.array(W), None
     
     def backward_pass(self, loss: ABCLoss):
         delta = loss.backward_pass(self.arch_model[-1].outputs)
@@ -124,7 +134,7 @@ class ABCModel(ABC):
                 # forward pass
                 y_pred_batch = self.__call__(X_train_batch)
                 loss_batch = loss(y_train_batch, y_pred_batch)
-                loss_batch = regularizer(self.get_weights(), loss_batch) if regularizer else loss_batch
+                if regularizer: loss_batch += regularizer(self.get_weights())
 
                 # backward pass
                 self.backward_pass(loss)
@@ -140,15 +150,18 @@ class ABCModel(ABC):
                 )
                     
             self.losses_train.append(np.mean(losses_train_batch))
-            self.losses_val.append(np.mean(losses_val_batch))
-            self.metrics_val.append(np.mean(metrics_val_batch))
+            if X_val is not None:
+                self.losses_val.append(np.mean(losses_val_batch))
+                self.metrics_val.append(np.mean(metrics_val_batch))
 
     def train(self):
         self.learning = True
         for layer in self.arch_model:
-            layer.train()
+            if hasattr(layer, "train") and callable(layer.train):
+                layer.train()
 
     def eval(self):
         self.learning = False
         for layer in self.arch_model:
-            layer.eval()
+            if hasattr(layer, "eval") and callable(layer.eval):
+                layer.eval()

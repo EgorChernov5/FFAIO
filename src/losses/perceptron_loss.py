@@ -11,5 +11,5 @@ class PerceptronLoss(ABCLoss):
         if self.learning: self.y_true = y_true.copy()
         return np.mean(np.maximum(0, -y_true*y_pred))
     
-    def backward_pass(self, inputs: np.ndarray) -> np.ndarray:
-        return np.where(self.y_true*inputs < 0, -self.y_true, 0.)
+    def backward_pass(self, y_pred: np.ndarray) -> np.ndarray:
+        return np.where(self.y_true*y_pred < 0, -self.y_true, 0.)

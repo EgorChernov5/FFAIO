@@ -99,34 +99,10 @@ class ConvLayer(ABCLayer):
             self.W_out = W_out
         
         return outputs
-
-    def _validate_weights_size(self, weights: np.ndarray):
-        error = ''
-        if any(self.b):
-            if (len(weights[0]) - 1) != len(self.W[0]):
-                error = 'Используется смещение, но значение отстуствует.'
-        else:
-            if len(weights[0]) != len(self.W[0]):
-                error = f'Не совпадают размеры весов {len(weights)}x{len(weights[0])} и {len(self.W)}x{len(self.W[0])}.'
-
-        assert len(error) == 0, error
-
-    def get_weights(self) -> np.ndarray:
-         return np.column_stack((self.W, self.b)) if any(self.b) else self.W
-
-    def update_weights(self, weights: np.ndarray):
-        # Валидируем веса
-        self._validate_weights_size(weights)
-
-        # Обновляем веса
-        if any(self.b):
-            self.W, self.b = weights[:, :-1], weights[:, -1]
-        else:
-            self.W = weights
     
     def backward_pass(self, delta: np.ndarray) -> np.ndarray:
         """
-        :param delta: Локальная ошибка с правого слоя (shape: [n, c_out, h, w]).
+        :param delta: Локальная ошибка с правого слоя (shape: (n, c_out, h, w)).
         :type delta: np.ndarray
         """
         KH, KW = self.kernel_size
@@ -202,7 +178,6 @@ class ConvLayer(ABCLayer):
         cols = inputs[:, k, i, j]
         return cols  # shape (N, C*KH*KW, out_h*out_w)
 
-
     def _optimized_forward(self, inputs):
         """
         Векторизированный forward Conv2D через im2col.
@@ -244,4 +219,3 @@ class ConvLayer(ABCLayer):
             out += self.b.reshape(1, -1, 1, 1)
 
         return out
-

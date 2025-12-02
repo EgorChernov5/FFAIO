@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 import torch
 import torchvision
 
+from src.tools import utils
+
 
 def load_mushroom_dataset(labels: list[int] = [1, 0], targets_shape: int = 2, random_state: int | None = None) -> tuple[np.ndarray]:
     """
@@ -37,6 +39,7 @@ def load_mushroom_dataset(labels: list[int] = [1, 0], targets_shape: int = 2, ra
     # poisonous=labels[0], edible=labels[1]
     y = np.where(y == 'p', labels[0], labels[1])
     if targets_shape == 2:
+        y = np.where(y == 1, 1, 0)
         y = np.eye(targets_shape)[y].squeeze()
     # Кодируем все признаки
     cols = X.keys()
@@ -77,7 +80,9 @@ def load_mnist_dataset(save_path: str | Path, val_size: float | None = None, ran
 
     # Объединяем train и test в один массив
     X = torch.cat([train_ds.data, test_ds.data], dim=0).numpy()
+    X = X[:, np.newaxis, :, :]
     y = torch.cat([train_ds.targets, test_ds.targets], dim=0).numpy()
+    y = utils.to_one_hot(y, 10)
 
     # Предобрабатываем данные
     # Нормализуем в [0, 1], поскольку изначально это 0–255
