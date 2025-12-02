@@ -27,12 +27,12 @@ class ABCLoss(ABC):
         return str(self).split('.')[-1].split()[0]
     
     @abstractmethod
-    def backward_pass(self, inputs: np.ndarray) -> np.ndarray:
+    def backward_pass(self, y_pred: np.ndarray) -> np.ndarray:
         """
         Частная производная функции ошибки по входам.
 
-        :param inputs: Входы функции потерь.
-        :type inputs: np.ndarray
+        :param y_pred: Предсказания модели.
+        :type y_pred: np.ndarray
 
         :return: Приращение функции ошибки по входам.
         :rtype: np.ndarray
