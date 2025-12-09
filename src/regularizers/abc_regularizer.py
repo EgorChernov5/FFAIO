@@ -8,7 +8,7 @@ class ABCRegularizer(ABC):
         self.bias_regularizer = bias_regularizer
 
     @abstractmethod
-    def __call__(self, weights: tuple[np.ndarray, np.ndarray | None]) -> np.ndarray:
+    def __call__(self, weights: dict) -> np.ndarray:
         raise NotImplementedError()
     
     @abstractmethod

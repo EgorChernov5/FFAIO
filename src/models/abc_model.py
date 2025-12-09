@@ -90,18 +90,23 @@ class ABCModel(ABC):
     def get_weights_layers(self) -> list[ABCLayer]:
         return [struc_element for struc_element in self.arch_model if isinstance(struc_element, ABCLayer)]
     
-    def get_weights(self) -> tuple[np.ndarray, np.ndarray | None]:
-        W, b = [], []
+    def get_weights(self) -> dict:
+        weights = {}
+        i = 1
+        prev_layer = None
         for layer in self.get_weights_layers():
-            weights, bias = layer.get_weights()
-            W.append(weights)
-            if bias is not None:
-                b.append(bias)
-        
-        if len(b):
-            return np.array(W), np.array(b)
-        else:
-            return np.array(W), None
+            W, b = layer.get_weights()
+            name_layer = layer.to_str()
+            
+            i = 1 if (prev_layer is None) or (name_layer not in prev_layer) else i + 1
+            prev_layer = name_layer
+
+            name_layer = name_layer + str(i)
+            weights[f'{name_layer}.weight'] = W
+            if b is not None: weights[f'{name_layer}.bias'] = b
+
+        return weights
+
     
     def backward_pass(self, loss: ABCLoss):
         delta = loss.backward_pass(self.arch_model[-1].outputs)
