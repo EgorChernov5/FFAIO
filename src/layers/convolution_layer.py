@@ -149,73 +149,161 @@ class ConvLayer(ABCLayer):
 
         return delta
 
-    def _im2col_indices(self, inputs):
-        """
-        x: padded input, shape (N, C, H, W)
-        returns cols: shape (N, C*KH*KW, out_h*out_w)
-        """
+
+class optConvLayer(ABCLayer):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int | tuple[int, int] = 3,
+        stride: int | tuple[int, int] = 1,
+        padding: int | tuple[int, int] = 0,
+        bias: bool = True,
+        padding_mode: str = "constant",
+        clip_value: float = 1e-3
+    ):
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
+        self.stride = (stride, stride) if isinstance(stride, int) else stride
+        self.padding = (padding, padding) if isinstance(padding, int) else padding
+        self.padding_mode = padding_mode
+
+        self.W, self.b = conv_uniform_init(
+            [self.out_channels, self.in_channels, *self.kernel_size], bias
+        )
+        self.W = self.W.astype(np.float32)
+        if self.b is not None:
+            self.b = self.b.astype(np.float32)
+
+        self.H_out = None
+        self.W_out = None
+        self.clip_value = clip_value  # <-- максимум для clip
+
+    def _im2col(self, inputs):
         N, C, H, W = inputs.shape
         KH, KW = self.kernel_size
-        out_h = (H - KH) // self.stride[0] + 1
-        out_w = (W - KW) // self.stride[1] + 1
+        SH, SW = self.stride
+        PH, PW = self.padding
 
-        # индексы внутри ядра
+        # padding
+        x = np.pad(inputs, ((0, 0), (0, 0), (PH, PH), (PW, PW)), mode='constant')
+
+        H_p, W_p = x.shape[2:]
+        H_out = (H_p - KH)//SH + 1
+        W_out = (W_p - KW)//SW + 1
+
+        # индексы
         i0 = np.repeat(np.arange(KH), KW)
-        i0 = np.tile(i0, C)                     # (C*KH*KW,)
+        i0 = np.tile(i0, C)
+
         j0 = np.tile(np.arange(KW), KH)
-        j0 = np.tile(j0, C)                     # (C*KH*KW,)
-        # смещения по выходным позициям
-        i1 = self.stride[0] * np.repeat(np.arange(out_h), out_w)   # (out_h*out_w,)
-        j1 = self.stride[1] * np.tile(np.arange(out_w), out_h)     # (out_h*out_w,)
+        j0 = np.tile(j0, C)
 
-        # итоговые координаты
-        i = i0.reshape(-1, 1) + i1.reshape(1, -1)  # (C*KH*KW, out_h*out_w)
-        j = j0.reshape(-1, 1) + j1.reshape(1, -1)  # (C*KH*KW, out_h*out_w)
+        i1 = SH * np.repeat(np.arange(H_out), W_out)
+        j1 = SW * np.tile(np.arange(W_out), H_out)
 
-        k = np.repeat(np.arange(C), KH * KW).reshape(-1, 1)  # (C*KH*KW, 1)
+        i = i0.reshape(1, -1) + i1.reshape(-1, 1)
+        j = j0.reshape(1, -1) + j1.reshape(-1, 1)
+        k = np.repeat(np.arange(C), KH*KW).reshape(1, -1)
 
-        # x[:, k, i, j] -> (N, C*KH*KW, out_h*out_w)
-        cols = inputs[:, k, i, j]
-        return cols  # shape (N, C*KH*KW, out_h*out_w)
+        cols = x[:, k, i, j]   # (N, H_out*W_out, C*KH*KW)
+        return cols
 
-    def _optimized_forward(self, inputs):
-        """
-        Векторизированный forward Conv2D через im2col.
+    def _col2im(self, cols, input_shape):
+        N, C, H, W = input_shape
+        KH, KW = self.kernel_size
+        SH, SW = self.stride
+        PH, PW = self.padding
 
-        x: вход (N, C_in, H_in, W_in)
+        H_outW_out = cols.shape[1]
+        H_out = (H + 2*PH - KH)//SH + 1
+        W_out = (W + 2*PW - KW)//SW + 1
 
-        Возвращает: out (N, C_out, H_out, W_out)
-        """
-        if self.learning: self.inputs = inputs.copy()
+        x_padded = np.zeros((N, C, H + 2*PH, W + 2*PW), dtype=cols.dtype)
 
-        N = inputs[0]
-        C_out, _, KH, KW = self.W.shape
+        i0 = np.repeat(np.arange(KH), KW)
+        i0 = np.tile(i0, C)
+        j0 = np.tile(np.arange(KW), KH)
+        j0 = np.tile(j0, C)
+        k  = np.repeat(np.arange(C), KH*KW)
 
-        # pad
-        if any(self.padding):
-            x_padded = np.pad(inputs, ((0,0), (0,0), self.padding, self.padding), mode='constant')
-        else:
-            x_padded = inputs
+        i1 = SH * np.repeat(np.arange(H_out), W_out)
+        j1 = SW * np.tile(np.arange(W_out), H_out)
 
-        H_p, W_p = x_padded.shape[2], x_padded.shape[3]
-        H_out = (H_p - KH) // self.stride[0] + 1
-        W_out = (W_p - KW) // self.stride[1] + 1
+        i = i0.reshape(1,-1) + i1.reshape(-1,1)
+        j = j0.reshape(1,-1) + j1.reshape(-1,1)
 
-        # im2col: (N, K, L) where K = C_in*KH*KW, L = H_out*W_out
-        cols = self._im2col_indices(x_padded)  # note: x already padded
-        N_, K, L = cols.shape
-        assert N_ == N
+        cols_reshaped = cols.reshape(N, H_out*W_out, C*KH*KW)
 
-        # reshape веса в матрицу (C_out, K)
-        W_col = self.W.reshape(C_out, -1)  # (C_out, K)
+        for n in range(N):
+            np.add.at(x_padded[n], (k, i, j), cols_reshaped[n])
 
-        # матричное умножение: для каждого примера выполним W_col @ cols[n]
-        # используем tensordot, чтобы избежать явного цикла по батчу:
-        # tensordot(cols, W_col, axes=([1],[1])) -> (N, L, C_out)
-        out_nlc = np.tensordot(cols, W_col, axes=([1], [1]))  # (N, L, C_out)
-        out = out_nlc.transpose(0, 2, 1).reshape(N, C_out, H_out, W_out)  # (N, C_out, H_out, W_out)
+        return x_padded[:, :, PH:H+PH, PW:W+PW]
+
+    def __call__(self, inputs: np.ndarray) -> np.ndarray:
+        N = inputs.shape[0]
+        C_out, C_in, KH, KW = self.W.shape
+
+        cols = self._im2col(inputs)  # (N, H_out*W_out, C*KH*KW)
+        W_col = self.W.reshape(C_out, -1)  # (C_out, C*KH*KW)
+
+        out = cols @ W_col.T  # (N, H_out*W_out, C_out)
 
         if self.b is not None:
-            out += self.b.reshape(1, -1, 1, 1)
+            out += self.b.reshape(1, 1, -1)
 
-        return out
+        # reshape к PyTorch формату
+        PH, PW = self.padding
+        SH, SW = self.stride
+        H_out = (inputs.shape[2] + 2*PH - KH)//SH + 1
+        W_out = (inputs.shape[3] + 2*PW - KW)//SW + 1
+
+        outputs = out.transpose(0, 2, 1).reshape(N, C_out, H_out, W_out)
+
+        # Сохраняем значения для обучения
+        if self.learning:
+            self.inputs = inputs.copy()
+            self.outputs = outputs.copy()
+            self.H_out = H_out
+            self.W_out = W_out
+
+        return outputs
+
+    def backward_pass(self, delta: np.ndarray) -> np.ndarray:
+        # delta: (N, C_out, H_out, W_out)
+        N, C_out, H_out, W_out = delta.shape
+        C_out, C_in, KH, KW = self.W.shape
+        PH, PW = self.padding
+        SH, SW = self.stride
+
+        # ---- (1) im2col для входа ----
+        X_col = self._im2col(self.inputs)
+        # X_col: (N, H_out*W_out, C_in*KH*KW)
+
+        # ---- (2) delta reshape ----
+        delta_col = delta.reshape(N, C_out, -1).transpose(0,2,1)  # (N, H_out*W_out, C_out)
+
+        # ---- (3) gradW ----
+        # суммируем по batch
+        self.gradW = (delta_col.transpose(0,2,1) @ X_col).sum(0)
+        self.gradW = self.gradW.reshape(C_out, C_in, KH, KW)
+
+        # ---- (4) gradb ----
+        if self.b is not None:
+            self.gradb = delta.sum(axis=(0,2,3))
+
+        # ---- (5) grad_input (через col2im) ----
+        W_col = self.W.reshape(C_out, -1)
+        delta_in_col = delta_col @ W_col  # (N, H_out*W_out, C_in*KH*KW)
+
+        # col2im
+        delta_in = self._col2im(delta_in_col,
+                                self.inputs.shape)
+
+        return delta_in
+    
+    def to_str(self):
+        return 'ConvLayer'

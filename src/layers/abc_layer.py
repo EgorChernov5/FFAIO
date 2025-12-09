@@ -35,3 +35,6 @@ class ABCLayer(ABC):
 
     def eval(self):
         self.learning = False
+
+    def to_str(self):
+        return str(self).split('.')[-1].split()[0]
