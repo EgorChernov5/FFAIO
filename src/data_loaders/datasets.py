@@ -82,7 +82,6 @@ def load_mnist_dataset(save_path: str | Path, val_size: float | None = None, ran
     X = torch.cat([train_ds.data, test_ds.data], dim=0).numpy()
     X = X[:, np.newaxis, :, :]
     y = torch.cat([train_ds.targets, test_ds.targets], dim=0).numpy()
-    y = utils.to_one_hot(y, 10)
 
     # Предобрабатываем данные
     # Нормализуем в [0, 1], поскольку изначально это 0–255

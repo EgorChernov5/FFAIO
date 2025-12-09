@@ -12,6 +12,9 @@ class ShuffleLoader(ABCLoader):
 
     def get_data(self, X: np.ndarray, y: np.ndarray) -> Iterator[tuple[int, np.ndarray, np.ndarray]]:
         n_samples = len(y)
-        for n_batch in range(n_samples//self.batch_size):
-            inds_batch = np.random.choice(n_samples, size=self.batch_size, replace=False)
-            yield n_batch, X[inds_batch], y[inds_batch]
+        # Перемешиваем индексы один раз
+        inds = np.random.permutation(n_samples)
+        for n_batch, start in enumerate(range(0, n_samples, self.batch_size)):
+            end = min(start + self.batch_size, n_samples)
+            batch_inds = inds[start:end]
+            yield n_batch, X[batch_inds], y[batch_inds]
