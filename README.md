@@ -27,7 +27,15 @@ ___
     - [PyTorch: Conv2d](https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html)
     - [Graphical visualization CNNs](https://www.analyticssteps.com/blogs/convolutional-neural-network-cnn-graphical-visualization-code-explanation)
     - [YouTube: Backpropagation in CNNs](https://www.youtube.com/watch?v=z9hJzduHToc)
+    - [Свёрточная нейронная сеть](https://www.dmitrymakarov.ru/learning/cnn-03/?ysclid=mirickjlie732280550)
+    - [CNN for MNIST (99.37%)](https://www.kaggle.com/code/gpreda/simple-introduction-to-cnn-for-mnist-99-37#Train-the-model)
+    - [CNN for MNIST (95.2%)](https://www.kaggle.com/code/sdelecourt/cnn-with-pytorch-for-mnist#notebook-container)
+    - [Кросс-энтропия в машинном обучении: принципы и применение](https://sky.pro/wiki/analytics/kross-entropiya-v-mashinnom-obuchenii-principy-i-primenenie/)
+    - [Loss Functions](https://ml-cheatsheet.readthedocs.io/en/latest/loss_functions.html#loss-functions)
+    - [Немного про энтропию](https://qudata.com/ml/ru/ML_Probability_Entropy.html#df)
+    - [Препарируем t-SNE](https://habr.com/ru/articles/267041/)
 
 - Интересные источники
     - [Анимации градиентного спуска и ландшафта потерь нейронных сетей на Python](https://habr.com/ru/companies/skillfactory/articles/536606/?code=573d2c3a820ba97e72bf28c982f35662&state=ac55EUBKLDnGc7UYzC637bTi&hl=ru)
     - [OpenML](https://openml.org/)
+    - [Материалы Дмитрия Маркова](https://www.dmitrymakarov.ru/)
