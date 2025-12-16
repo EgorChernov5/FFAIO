@@ -13,5 +13,5 @@ class SignActivation(ABCActivation):
         return outputs
     
     def backward_pass(self, delta: np.ndarray) -> np.ndarray:
-        dI = np.ones(self.inputs.shape)
-        return delta*dI
+        dA = np.ones(self.inputs.shape)
+        return delta*dA

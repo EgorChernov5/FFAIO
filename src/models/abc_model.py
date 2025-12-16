@@ -5,13 +5,14 @@ from typing import Callable
 from src.layers import ABCLayer
 from src.activations import ABCActivation
 from src.structure_layers import ABCStructureLayer
+from src.cells import ABCCell
 from src.losses import ABCLoss
 from src.optimizers import ABCOptimizer
 from src.regularizers import ABCRegularizer
 
 
 class ABCModel(ABC):
-    def __init__(self, arch_model: list[ABCLayer| ABCActivation | ABCStructureLayer]):
+    def __init__(self, arch_model: list[ABCLayer| ABCActivation | ABCStructureLayer | ABCCell]):
         self.arch_model = arch_model
 
         self.learning = True
@@ -20,9 +21,14 @@ class ABCModel(ABC):
         self.metrics_val = []
 
     def __call__(self, X: np.ndarray, postprocess: Callable[[np.ndarray], np.ndarray] | None = None) -> np.ndarray:
-        outputs = X
+        outputs = X.copy()
+        prev_hidden_state = None
         for layer in self.arch_model:
-            outputs = layer(outputs)
+            if isinstance(layer, ABCCell):
+                outputs, prev_hidden_state = layer(outputs, prev_hidden_state)
+            else:
+                outputs = layer(outputs)
+                prev_hidden_state = None
 
         return outputs if postprocess is None else postprocess(outputs)
     
@@ -88,29 +94,38 @@ class ABCModel(ABC):
         return losses_train_batch, losses_val_batch, metrics_val_batch
     
     def get_weights_layers(self) -> list[ABCLayer]:
-        return [struc_element for struc_element in self.arch_model if isinstance(struc_element, ABCLayer)]
+        return [struc_element for struc_element in self.arch_model if isinstance(struc_element, (ABCLayer, ABCCell))]
     
     def get_weights(self) -> dict:
         weights = {}
         i = 1
         prev_layer = None
         for layer in self.get_weights_layers():
-            W, b = layer.get_weights()
             name_layer = layer.to_str()
-            
             i = 1 if (prev_layer is None) or (name_layer not in prev_layer) else i + 1
             prev_layer = name_layer
 
-            name_layer = name_layer + str(i)
-            weights[f'{name_layer}.weight'] = W
-            if b is not None: weights[f'{name_layer}.bias'] = b
+            if isinstance(layer, ABCLayer):
+                W, b = layer.get_weights()
+
+                name_layer = name_layer + str(i)
+                weights[f'{name_layer}.weight'] = W
+                if b is not None: weights[f'{name_layer}.bias'] = b
+            else:
+                W, b, Wh, bh = layer.get_weights()
+
+                weights[f'{name_layer}.weight_ih_l{i}'] = W
+                weights[f'{name_layer}.weight_hh_l{i}'] = Wh
+                if layer.bias:
+                    weights[f'{name_layer}.bias_ih_l{i}'] = b
+                    weights[f'{name_layer}.bias_hh_l{i}'] = bh
 
         return weights
-
     
     def backward_pass(self, loss: ABCLoss):
         delta = loss.backward_pass(self.arch_model[-1].outputs)
-        for layer in reversed(self.arch_model[:-1]):         
+        # for layer in reversed(self.arch_model[:-1]):
+        for layer in reversed(self.arch_model):
             # Считаем дельта правило или градиент весов и передаём ошибку дальше влево
             delta = layer.backward_pass(delta)
 

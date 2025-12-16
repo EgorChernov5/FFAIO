@@ -1,8 +1,13 @@
+import os
 from pathlib import Path
-import numpy as np
 from ucimlrepo import fetch_ucirepo
+import requests
+import zipfile
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+import numpy as np
+import pandas as pd
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 
 import torch
@@ -92,5 +97,69 @@ def load_mnist_dataset(save_path: str | Path, val_size: float | None = None, ran
     X_val, y_val = None, None
     if val_size is not None:
         X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_size, random_state=random_state, shuffle=True, stratify=y_train)
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def load_steel_dataset(
+        path_save: str | Path,
+        size_test: float = 0.3,
+        size_val: float | None = None,
+        window: int = 1
+    ) -> tuple[np.ndarray]:
+    path_csv = Path(path_save) / 'Steel_industry_data.csv'
+    if not os.path.exists(path_csv):
+        # Выгрузка архива с данными
+        url = "https://www.kaggle.com/api/v1/datasets/download/csafrit2/steel-industry-energy-consumption"
+        response = requests.get(url, allow_redirects=True)
+
+        # Сохранение архива
+        path_zip = Path(path_save) / path_csv.name.replace('.csv', '.zip')
+        with open(path_zip, "wb") as f:
+            f.write(response.content)
+
+        # Распаковка
+        with zipfile.ZipFile(path_zip, 'r') as zip_ref:
+            zip_ref.extractall(path_save)
+
+    # Загрузка данных
+    df = pd.read_csv(path_csv)
+
+    # Предобработка данных
+    # Переименование столбцов
+    df = df.rename(columns={
+        'Lagging_Current_Reactive.Power_kVarh' : 'Lagging_Current_Reactive_Power_kVarh',
+        'CO2(tCO2)' : 'CO2'
+    })
+    # Приведение даты к индексу
+    df['date'] = pd.to_datetime(df['date'], format="%d/%m/%Y %H:%M")
+    df = df.sort_values('date')
+    df = df.set_index('date')
+    # Преобразование категориальных признаков в числовые
+    df = pd.get_dummies(df, columns=['WeekStatus', 'Day_of_week', 'Load_Type'], drop_first=True, dtype=int)
+
+    # Разделяем на выборки
+    ind_train = int(len(df)*(1 - size_val - size_test)) if size_val is not None else int(len(df)*(1 - size_test))
+    ind_val = ind_train + int(len(df)*size_val) if size_val is not None else ind_train
+
+    # Масштабирование данных
+    scaler = MinMaxScaler()
+    train_df = df.iloc[:ind_train]
+    val_df = df.iloc[ind_train:ind_val] if size_val is not None else None
+    test_df  = df.iloc[ind_val:]
+
+    scaler.fit(train_df)
+    train_scaled = scaler.transform(train_df)
+    val_scaled  = scaler.transform(val_df) if val_df is not None else None
+    test_scaled  = scaler.transform(test_df)
+
+    train_scaled = pd.DataFrame(train_scaled, index=train_df.index, columns=df.columns)
+    val_scaled  = pd.DataFrame(val_scaled, index=val_df.index, columns=df.columns) if val_scaled is not None else None
+    test_scaled  = pd.DataFrame(test_scaled, index=test_df.index, columns=df.columns)
+
+    # Создания временных окон
+    X_train, y_train = utils.create_sequences(train_scaled, 'Usage_kWh', window=window, type_task='many_to_many')
+    X_val, y_val = utils.create_sequences(val_scaled, 'Usage_kWh', window=window, type_task='many_to_many') if val_scaled is not None else (None, None)
+    X_test, y_test = utils.create_sequences(test_scaled,  'Usage_kWh', window=window, type_task='many_to_many')
 
     return X_train, X_val, X_test, y_train, y_val, y_test

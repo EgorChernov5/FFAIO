@@ -13,5 +13,5 @@ class ReLUActivation(ABCActivation):
         return outputs
     
     def backward_pass(self, delta: np.ndarray) -> np.ndarray:
-        dI = np.where(self.outputs > 0., 1., 0.)
-        return delta*dI
+        dA = np.where(self.outputs > 0., 1., 0.)
+        return delta*dA

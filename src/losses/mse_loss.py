@@ -5,34 +5,40 @@ from src.losses import ABCLoss
 
 class MSELoss(ABCLoss):
     """
-    Квадратичная функция потерь.
+    MSELoss с поддержкой RNN:
+    y_true: (n_batch,)
+    logits: (n_batch, n_time, n_features) или (n_batch, n_time, 1)
     """
-    def __call__(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        # if self.learning: self.y_true = y_true.copy()
-        # return np.mean(np.maximum(0, -y_true*y_pred))
-        pass
-    
-    def pd_wrt_a(self, A: np.ndarray) -> np.ndarray:
-        """
-        Partial derivative with recpect to activation function.
 
-        :param A: Признаки объекта.
-        :type A: np.ndarray
+    # def __call__(self, y_true: np.ndarray, logits: np.ndarray) -> float:
+    #     if self.learning:
+    #         self.logits_shape = logits.shape
+    #         # Расширяем y_true на временную ось
+    #         if y_true.ndim == 1 and logits.ndim == 3:
+    #             self.y_true = np.repeat(y_true[:, None, None], repeats=logits.shape[1], axis=1)
+    #             if logits.shape[2] != 1:
+    #                 # Если многоклассовая/многовекторная регрессия, повторяем по features
+    #                 self.y_true = np.repeat(self.y_true, repeats=logits.shape[2], axis=2)
+    #         else:
+    #             self.y_true = y_true.copy()
+        
+    #     return np.mean((self.y_true - logits) ** 2)
+    def __call__(self, y_true: np.ndarray, logits: np.ndarray) -> float:
+        if logits.ndim == 3:
+            # Меняем формы y_true в зависимости от задачи
+            if (y_true.ndim == 1) or ((y_true.ndim == 2) and (y_true.shape[1] == 1)):
+                # Если задача many-to-one
+                pass
+            elif (y_true.ndim == 2) and (y_true.shape[1] > 1):
+                # Если задача many-to-many
+                y_true = y_true[:, :, None]
 
-        :return: Приращение функции ошибки по весам и по смещению с отрицательным знаком.
-        :rtype: tuple[np.ndarray, np.float64]
-        """
-        # dL_dA = np.where(self.y_true*A < 0, -self.y_true, 0.)
-        # return dL_dA
-        pass
+        if self.learning:
+            self.y_true = y_true.copy()
+        
+        return np.mean((logits - y_true) ** 2)
 
+    def backward_pass(self, logits: np.ndarray) -> np.ndarray:
+        n_elements = np.prod(self.y_true.shape)
+        return 2 * (logits - self.y_true) / n_elements
 
-# OLD
-class MSE(ABCLoss):
-    def __call__(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        self.losses = np.array([np.mean((y_true - y_pred)**2)])
-        return self.losses
-    
-    def partial_derivative_wrt_a(self, i_neuron: int, input: float) -> float:
-        n = len(self.losses)
-        return 2/n*(input - self.losses[i_neuron])

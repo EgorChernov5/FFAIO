@@ -20,14 +20,59 @@ class LinearLayer(ABCLayer):
         
         return outputs
         
+    # def backward_pass(self, delta: np.ndarray) -> np.ndarray:
+    #     # Считаем частные производные слоя весов по весам [n_samples, n_inputs]
+    #     dW = np.column_stack((self.inputs, np.ones(len(self.inputs)))) if any(self.b) else self.inputs
+    #     # Частная производная по входам
+    #     dI = self.W
+    #     # Частная производная Loss по весу нейрона: dL_dW = dL_dA*dF_dI*dZ_dW
+    #     gradients = delta.T@dW / len(self.inputs)
+    #     self.gradW = gradients[:, :-1] if any(self.b) else gradients
+    #     self.gradb = gradients[:, -1] if any(self.b) else None
+    #     # Передаём ошибку дальше влево через веса
+    #     return delta@dI
+    
     def backward_pass(self, delta: np.ndarray) -> np.ndarray:
-        # Считаем частные производные слоя весов по весам [n_samples, n_inputs]
-        dW = np.column_stack((self.inputs, np.ones(len(self.inputs)))) if any(self.b) else self.inputs
-        # Частная производная по входам
+        """
+        delta: (batch, out_features) или (batch, seq_len, out_features)
+        self.inputs: (batch, in_features) или (batch, seq_len, in_features)
+        """
+        # dI: (in, out)
         dI = self.W
-        # Частная производная Loss по весу нейрона: dL_dW = dL_dA*dF_dI*dZ_dW
-        gradients = delta.T@dW / len(self.inputs)
-        self.gradW = gradients[:, :-1] if any(self.b) else gradients
-        self.gradb = gradients[:, -1] if any(self.b) else None
-        # Передаём ошибку дальше влево через веса
-        return delta@dI
+
+        # Определяем форму
+        if self.inputs.ndim == 2:
+            # 2D: (batch, in_features)
+            B = self.inputs.shape[0]
+
+            # dW: (out, in)
+            self.gradW = delta.T@self.inputs
+            # db: (out,)
+            if self.b is not None:
+                self.gradb = delta.sum(axis=0)
+            else:
+                self.gradb = None
+
+            # local_error: (batch, in_features)
+            local_error = delta@self.W
+
+        elif self.inputs.ndim == 3:
+            # 3D: (batch, seq_len, in_features)
+            B, T, _ = self.inputs.shape
+
+            # dW: (out, in)
+            self.gradW = np.einsum("bto,bti->oi", delta, self.inputs)
+            # db: (out,)
+            if self.b is not None:
+                self.gradb = delta.sum(axis=(0, 1))
+            else:
+                self.gradb = None
+
+            # local_error: (batch, seq_len, in_features)
+            local_error = delta@dI
+
+        else:
+            raise ValueError("inputs must be 2D or 3D")
+
+        return local_error
+

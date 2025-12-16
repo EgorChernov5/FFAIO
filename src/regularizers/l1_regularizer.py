@@ -8,24 +8,17 @@ class L1Regularizer(ABCRegularizer):
         super().__init__(lambda_q, bias_regularizer)
 
     def __call__(self, weights: dict) -> np.ndarray:
-        for name_layer, weights in weights.items():
-            if 'bias' in name_layer and self.bias_regularizer:
-                sum_weights += np.sum(np.abs(weights))
-            elif 'bias' not in name_layer:
-                sum_weights += np.sum(np.abs(weights))
-        # W, b = weights
-        # sum_weights = np.sum(np.abs(W)) + np.sum(np.abs(b)) if self.bias_regularizer else np.sum(np.abs(W))
-        return self.lambda_q*sum_weights
-    
-    def pd_wrt_w(
-        self,
-        weights: tuple[np.ndarray, np.ndarray | None]
-        ) -> tuple[np.ndarray, np.ndarray | None]:
+        sum_weights = 0.0
+        for name, w in weights.items():
+            if 'bias' in name:
+                if self.bias_regularizer:
+                    sum_weights += np.sum(np.abs(w))
+            else:
+                sum_weights += np.sum(np.abs(w))
+        return self.lambda_q * sum_weights
+
+    def pd_wrt_w(self, weights: tuple[np.ndarray, np.ndarray | None]) -> tuple[np.ndarray, np.ndarray | None]:
         W, b = weights
         reg_W = self.lambda_q * np.sign(W)
-
-        reg_b = None
-        if self.bias_regularizer:
-            reg_b = self.lambda_q * np.sign(b)
-
+        reg_b = self.lambda_q * np.sign(b) if self.bias_regularizer and b is not None else None
         return reg_W, reg_b

@@ -5,7 +5,7 @@ from sklearn.metrics import roc_curve, auc
 from src.models import ABCModel
 
 
-def vis_losses_metrics(model: ABCModel):
+def vis_losses_metrics(model: ABCModel, name_metric: str = 'Accuracy'):
     # Строим графики
     plt.figure(figsize=(10, 4))
 
@@ -21,9 +21,9 @@ def vis_losses_metrics(model: ABCModel):
 
     # --- График точности ---
     plt.subplot(1, 2, 2)
-    plt.plot(model.metrics_val, label='Val accuracy')
+    plt.plot(model.metrics_val, label=f'Val {name_metric}')
     plt.xlabel('Эпоха')
-    plt.ylabel('Accuracy')
+    plt.ylabel(name_metric)
     plt.title('Изменение точности')
     plt.legend()
     plt.grid(True)

@@ -1,14 +1,17 @@
 import numpy as np
+
 from src.activations import ABCActivation
 
 
-class SigmoidActivation(ABCActivation):
+class TanhActivation(ABCActivation):
     def __init__(self):
         super().__init__()
-        self.outputs_list = []   # sigmoid(Z_t)
+
+        self.outputs_list = []   # tanh(Z_t)
 
     def __call__(self, inputs: np.ndarray) -> np.ndarray:
-        outputs = 1 / (1 + np.exp(-inputs))
+        # inputs: Z_t (batch, hidden)
+        outputs = np.tanh(inputs)
 
         if self.learning:
             self.inputs = inputs.copy()
@@ -23,14 +26,12 @@ class SigmoidActivation(ABCActivation):
 
     def backward_pass(self, delta: np.ndarray, t: int | None = None) -> np.ndarray:
         """
-        delta: dL/dA_t
-        t: timestep (for BPTT)
-        returns: dL/dZ_t
+        delta_list: list[delta_h_t], each shape (batch, hidden)
+        returns: list[dZ_t], same shapes
         """
         if t is not None:
-            sig = self.outputs_list[t]
+            dA = 1 - self.outputs_list[t]**2
         else:
-            sig = self.outputs
-
-        dA = sig * (1 - sig)
-        return delta * dA
+            dA = 1 - self.outputs**2
+        
+        return delta*dA

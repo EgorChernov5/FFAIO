@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 import torch
 from torch.nn import Module
@@ -57,3 +58,35 @@ def load_weights(custom_model: ABCModel, pytorch_model: Module, path_weights: st
     share_weights(pytorch_model, custom_model)
 
 
+def create_sequences(
+        df: pd.DataFrame,
+        target_col: str,
+        window: int = 1,
+        type_task: str = 'many_to_one'
+    ) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Docstring for create_sequences
+    
+    :param df: Description
+    :type df: pd.DataFrame
+    :param target_col: Description
+    :type target_col: str
+    :param window: Description
+    :type window: int
+    :param type_task: Description
+    :type type_task: str
+    
+    :return: Description
+    :rtype: tuple[ndarray[_AnyShape, dtype[Any]], ndarray[_AnyShape, dtype[Any]]]
+    """
+    X, y = [], []
+    features = df.drop(columns=[target_col]).values
+    targets = df[target_col].values
+    for i in range(len(targets) - window):
+        X.append(features[i:i+window])      # Набор объектов
+        if type_task == 'many_to_one':
+            y.append(targets[i+window-1])   # Последнее целевое значение
+        elif type_task == 'many_to_many':
+            y.append(targets[i:i+window])   # Все целевые значения в окне
+
+    return np.array(X), np.array(y)
