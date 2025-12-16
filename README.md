@@ -21,7 +21,6 @@ ___
     - [YouTube: Оптимизаторы градиентных алгоритмов](https://www.youtube.com/watch?v=lRWiWwS11Yo&t=53s)
     - [YouTube: Стохастический градиентный спуск SGD и алгоритм SAG](https://www.youtube.com/watch?v=wPk8Z3aOBsg&t=456s)
     - [PyTorch: CrossEntropyLoss](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss)
-    - []()
 
 - lab2
     - [PyTorch: Conv2d](https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html)
@@ -35,7 +34,16 @@ ___
     - [Немного про энтропию](https://qudata.com/ml/ru/ML_Probability_Entropy.html#df)
     - [Препарируем t-SNE](https://habr.com/ru/articles/267041/)
 
+- lab3
+    - [PyTorch: RNN](https://docs.pytorch.org/docs/stable/generated/torch.nn.RNN.html)
+    - [Рекуррентная нейронная сеть](https://www.dmitrymakarov.ru/learning/rnn/)
+    - [A Brief Introduction to Recurrent Neural Networks](https://towardsdatascience.com/a-brief-introduction-to-recurrent-neural-networks-638f64a61ff4/)
+    - [RNN, LSTM, GRU и другие рекуррентные нейронные сети](http://vbystricky.ru/2021/05/rnn_lstm_gru_etc.html)
+    - [RNN Basic](https://goodboychan.github.io/python/deep_learning/tensorflow-keras/2020/10/26/02-RNN-Basic.html)
+    - [RNN - Many-to-one](https://goodboychan.github.io/python/deep_learning/tensorflow-keras/2020/12/06/01-RNN-Many-to-one.html)
+
 - Интересные источники
     - [Анимации градиентного спуска и ландшафта потерь нейронных сетей на Python](https://habr.com/ru/companies/skillfactory/articles/536606/?code=573d2c3a820ba97e72bf28c982f35662&state=ac55EUBKLDnGc7UYzC637bTi&hl=ru)
     - [OpenML](https://openml.org/)
     - [Материалы Дмитрия Маркова](https://www.dmitrymakarov.ru/)
+    - [Chan`s Jupyter](https://goodboychan.github.io/)
