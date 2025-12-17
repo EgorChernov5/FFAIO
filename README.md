@@ -41,6 +41,10 @@ ___
     - [RNN, LSTM, GRU и другие рекуррентные нейронные сети](http://vbystricky.ru/2021/05/rnn_lstm_gru_etc.html)
     - [RNN Basic](https://goodboychan.github.io/python/deep_learning/tensorflow-keras/2020/10/26/02-RNN-Basic.html)
     - [RNN - Many-to-one](https://goodboychan.github.io/python/deep_learning/tensorflow-keras/2020/12/06/01-RNN-Many-to-one.html)
+    - [arXiv: Long Short-Term Memory Based Recurrent Neural Network Architectures for Large Vocabulary Speech Recognition](https://arxiv.org/pdf/1402.1128)
+    - [Understanding LSTM](https://mlarchive.com/deep-learning/understanding-long-short-term-memory-networks/)
+    - [ChatGPT: Значение операций](https://chatgpt.com/share/69424f59-b9b8-8004-83f6-aee870c4917c)
+    - [ChatGPT: Ворота GRU](https://chatgpt.com/share/694257a8-6cb4-8004-a83f-57ee3294e109)
 
 - Интересные источники
     - [Анимации градиентного спуска и ландшафта потерь нейронных сетей на Python](https://habr.com/ru/companies/skillfactory/articles/536606/?code=573d2c3a820ba97e72bf28c982f35662&state=ac55EUBKLDnGc7UYzC637bTi&hl=ru)

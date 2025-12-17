@@ -72,13 +72,16 @@ class LSTMCell(ABCCell):
         for t in range(n_time):
             x_t = inputs[:, t, :]
 
-            i_t = self.sigmoid(x_t @ self.Wi.T + h_t @ self.Whi.T + self.bi + self.bhi)
-            f_t = self.sigmoid(x_t @ self.Wf.T + h_t @ self.Whf.T + self.bf + self.bhf)
-            o_t = self.sigmoid(x_t @ self.Wo.T + h_t @ self.Who.T + self.bo + self.bho)
-            g_t = self.tanh(x_t @ self.Wg.T + h_t @ self.Whg.T + self.bg + self.bhg)
+            # forget gate
+            f_t = self.sigmoid(x_t@self.Wf.T + h_t@self.Whf.T + self.bf + self.bhf)
+            # input gate (sigmoid определяет важность признаков, а tanh их значение)
+            i_t = self.sigmoid(x_t@self.Wi.T + h_t@self.Whi.T + self.bi + self.bhi)
+            g_t = self.tanh(x_t@self.Wg.T + h_t@self.Whg.T + self.bg + self.bhg)
+            # output gate
+            o_t = self.sigmoid(x_t@self.Wo.T + h_t@self.Who.T + self.bo + self.bho)
 
-            c_t = f_t * c_t + i_t * g_t
-            h_t = o_t * np.tanh(c_t)
+            c_t = f_t*c_t + i_t*g_t
+            h_t = o_t*np.tanh(c_t)
 
             if self.learning:
                 self.x_list.append(x_t)

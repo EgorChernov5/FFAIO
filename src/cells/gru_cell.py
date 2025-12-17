@@ -53,22 +53,22 @@ class GRUCell(ABCCell):
             x_t = inputs[:, t, :]
 
             # Update gate
-            z_t = x_t @ self.Wz.T + hidden_state @ self.Whz.T
+            z_t = x_t@self.Wz.T + hidden_state@self.Whz.T
             if self.bias: z_t += self.bz + self.bhz
             z_t = self.sigmoid(z_t)
 
             # Reset gate
-            r_t = x_t @ self.Wr.T + hidden_state @ self.Whr.T
+            r_t = x_t@self.Wr.T + hidden_state@self.Whr.T
             if self.bias: r_t += self.br + self.bhr
             r_t = self.sigmoid(r_t)
 
             # Candidate hidden
-            h_tilde = x_t @ self.Wc.T + (r_t * hidden_state) @ self.Whc.T
+            h_tilde = x_t@self.Wc.T + (r_t*hidden_state)@self.Whc.T
             if self.bias: h_tilde += self.bc + self.bhc
             h_tilde = self.tanh(h_tilde)
 
             # Hidden state
-            hidden_state = (1 - z_t) * h_tilde + z_t * hidden_state
+            hidden_state = (1 - z_t)*h_tilde + z_t*hidden_state
 
             if self.learning:
                 self.x_list.append(x_t)
